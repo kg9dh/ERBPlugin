@@ -1,0 +1,12 @@
+name: ERBPlugin
+version: 0.1
+main: ch.kg9dh.main.ERB
+commands:
+  erb:
+    description: Main ERB command.
+    usage: /<command> <args>
+    default: op
+  rap:
+    description: Rap something.
+    usage: /<command>  
+    default: op
