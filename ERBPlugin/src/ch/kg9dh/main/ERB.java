@@ -6,7 +6,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -33,9 +35,19 @@ public class ERB extends JavaPlugin{
 	public boolean enabled;
 	
 	public ItemStack priceitem;
-
+	public ItemStack tie_prize;
+	
+	public List<String>blacklist;
+	public List<Player>hasvoted;
+	
+	public RAP RAPexecutor;
+	public VOTE VOTEexecutor;
+	
 	@Override
-	public void onEnable() {
+	public void onEnable() {		
+		loadConfig();
+		
+		blacklist = this.getConfig().getStringList("blacklist");		
 		max = 0;
 		vote_1 = 0;
 		vote_2 = 0;
@@ -44,13 +56,24 @@ public class ERB extends JavaPlugin{
 		vote = false;
 		rap = false;
 		enabled = true;
-		priceitem = new ItemStack(Material.DIAMOND, 1);
-		Bukkit.getScheduler().cancelTask(ERB.this.taskID);	
+		priceitem = new ItemStack(Material.getMaterial(this.getConfig().getInt("price.item")), this.getConfig().getInt("price.ammount"));
+		tie_prize = new ItemStack(Material.getMaterial(this.getConfig().getInt("price.tie.item")), this.getConfig().getInt("price.tie.ammount"));
+		
+		RAPexecutor = new RAP(this);
+		getCommand("rap").setExecutor(RAPexecutor);
+		
+		////NOT IN USE ATM/////////////////
+		//VOTEexecutor = new VOTE(this);
+		//getCommand("vote").setExecutor(VOTEexecutor);
+		
+		this.getServer().getPluginManager().registerEvents(new RAPListener(this), this);
 	}
 	
  	@Override
     public void onDisable() {
- 		 		
+		Bukkit.getScheduler().cancelTask(ERB.this.taskID);	 	
+		blacklist.clear();
+		hasvoted.clear();
 	}
  	
  	@Override
@@ -82,11 +105,13 @@ public class ERB extends JavaPlugin{
  					if(max==0){
  						max++;
  						rapper_1 = p;
+ 						hasvoted.add(p);
  						Bukkit.broadcastMessage(ChatColor.DARK_RED+"[ERB]"+ ChatColor.BLUE+"The first rapper is: "+p.getDisplayName().toString());
  					}else if(max==1){
  						max++;
- 						if(p.toString().equalsIgnoreCase(rapper_1.toString())){ //TODO: make a not
+ 						if(!p.toString().equalsIgnoreCase(rapper_1.toString())){ //TODO: make a not
  							rapper_2 = p;
+ 							hasvoted.add(p);
  							Bukkit.broadcastMessage(ChatColor.DARK_RED+"[ERB]"+ ChatColor.BLUE+"The second rapper is: "+p.getDisplayName().toString());
  							getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ ChatColor.RED + "Prepare for rapping!");
  						}else{
@@ -113,17 +138,15 @@ public class ERB extends JavaPlugin{
 	 						    		getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ ChatColor.BLUE + "Start Voting!");
 	 						    	}else if(countdown==0){
 	 						    		getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ ChatColor.RED + "Voting has stopped!");
-	 						    		if(vote_1<vote_2){
-	 						    			getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ ChatColor.BLUE + rapper_2.getDisplayName().toString() + " won the battle!");
-	 						    			rapper_2.getInventory().addItem(priceitem);
-	 						    			rapper_2.getInventory().addItem(priceitem);
+	 						    		if(vote_1==vote_2){
+	 						    			getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ ChatColor.BLUE + "It's a tie!");
+	 						    			rapper_1.getInventory().addItem(tie_prize);
+	 						    			rapper_2.getInventory().addItem(tie_prize);
 	 						    		}else if(vote_1>vote_2){
 	 						    			getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ ChatColor.BLUE + rapper_1.getDisplayName().toString() + " won the battle!");
 	 						    			rapper_1.getInventory().addItem(priceitem);
-	 						    			rapper_1.getInventory().addItem(priceitem);
-	 						    		}else if(vote_1==vote_2){
-	 						    			getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ ChatColor.BLUE + "It's a tie!");
-	 						    			rapper_1.getInventory().addItem(priceitem);
+	 						    		}else if(vote_1<vote_2){
+	 						    			getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ ChatColor.BLUE + rapper_2.getDisplayName().toString() + " won the battle!");
 	 						    			rapper_2.getInventory().addItem(priceitem);
 	 						    		}
 	 						    	}
@@ -131,7 +154,7 @@ public class ERB extends JavaPlugin{
 	 						    	}else{	
 	 						    		Bukkit.getScheduler().cancelTask(ERB.this.taskID);	 	
 	 						    		System.out.println("[ERB] TASK CANCELED!");
-	 						    		onEnable();
+	 						    		simpleReload();
 	 						    	}	 						    	
 	 						    }
 	 						}, 100L, 20L);	 						
@@ -145,15 +168,19 @@ public class ERB extends JavaPlugin{
  			}else if(args[0].equalsIgnoreCase("vote")){
  				if(p.hasPermission("erb.vote")){
  					if(vote==true){
-	 					if(args[1].equalsIgnoreCase(rapper_1.getDisplayName().toString())){
-	 						vote_1++;
-	 						p.sendMessage(ChatColor.DARK_RED+"[ERB] "+ChatColor.BLUE + "You voted for: " + rapper_1.getDisplayName().toString());
-	 					}else if(args[1].equalsIgnoreCase(rapper_2.getDisplayName().toString())){
-	 						vote_2++;
-	 						p.sendMessage(ChatColor.DARK_RED+"[ERB] "+ChatColor.BLUE + "You voted for: " + rapper_2.getDisplayName().toString());
-	 					}else{
-	 						p.sendMessage(ChatColor.DARK_RED+"[ERB] "+ChatColor.RED+"You missspelled the name!");
-	 					}
+ 						if(hasvoted.contains(p)){
+ 							p.sendMessage(ChatColor.DARK_RED+"[ERB] "+ChatColor.RED+"You can't vote anymore!");
+ 							return true;
+ 						}
+		 					if(args[1].equalsIgnoreCase(rapper_1.getDisplayName().toString())){
+		 						vote_1++;
+		 						p.sendMessage(ChatColor.DARK_RED+"[ERB] "+ChatColor.BLUE + "You voted for: " + rapper_1.getDisplayName().toString());
+		 					}else if(args[1].equalsIgnoreCase(rapper_2.getDisplayName().toString())){
+		 						vote_2++;
+		 						p.sendMessage(ChatColor.DARK_RED+"[ERB] "+ChatColor.BLUE + "You voted for: " + rapper_2.getDisplayName().toString());
+		 					}else{
+		 						p.sendMessage(ChatColor.DARK_RED+"[ERB] "+ChatColor.RED+"You missspelled the name!");
+		 					}
  					}else{
  		 					p.sendMessage(ChatColor.DARK_RED+"[ERB] "+ChatColor.RED+"You can't vote at the moment!");
  					}
@@ -188,26 +215,27 @@ public class ERB extends JavaPlugin{
  				p.sendMessage(ChatColor.DARK_RED+"[ERB] "+ChatColor.RED+"Command usage: /erb <argument>");
  			}
  			 			
- 		}else if(cmd.getName().equalsIgnoreCase("rap")){
-				if(p.hasPermission("erb.rap")){
- 					if(rap==true){
- 						String message = "";
- 						for(int x=0; x<args.length; x++){
- 							message = message+args[x]+" ";
- 						}
- 						Bukkit.broadcastMessage(ChatColor.DARK_RED+"[ERB/"+p.getDisplayName().toString()+"] "+ChatColor.BLUE+message);
- 						message = "";
- 					}else{
-		 				p.sendMessage(ChatColor.DARK_RED+"[ERB] "+ChatColor.RED+"You can't rap at the moment!");
-					}
-				}else{
- 					p.sendMessage(ChatColor.DARK_RED+"[ERB] "+ChatColor.RED+"You do not have permission for this command!");
- 				} 	
- 		}
- 		
+ 		}		
  		
  		return false;
  	}
  		
+	private void loadConfig() {
+		FileConfiguration cfg = this.getConfig();
+		cfg.options().copyDefaults(true);
+		this.saveConfig();		
+	}
+ 	
+	private void simpleReload(){
+		max = 0;
+		vote_1 = 0;
+		vote_2 = 0;
+		rapper_1 = null;
+		rapper_2 = null;
+		vote = false;
+		rap = false;
+		enabled = true;
+		hasvoted.clear();
+	}
 	
 }

@@ -10,3 +10,7 @@ commands:
     description: Rap something.
     usage: /<command>  
     default: op
+  vote:
+    description: Vote for a player.
+    usage: /<command>  
+    default: op

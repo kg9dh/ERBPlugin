@@ -1,0 +1,13 @@
+#ERBPlugin v0.1 by kg9dh
+blacklist:
+  - fuck
+  - dick
+  - fag
+  - cunt
+  - babar the elephant
+price:
+  item: 264
+  ammount: 5
+  tie:
+    item: 388
+    ammount: 2
