@@ -1,5 +1,6 @@
 package ch.kg9dh.main;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.bukkit.Bukkit;
@@ -33,6 +34,8 @@ public class ERB extends JavaPlugin{
 	public boolean vote;
 	public boolean rap;
 	public boolean enabled;
+	public boolean session_1;
+	public boolean session_2;
 	
 	public ItemStack priceitem;
 	public ItemStack tie_prize;
@@ -56,6 +59,7 @@ public class ERB extends JavaPlugin{
 		vote = false;
 		rap = false;
 		enabled = true;
+		hasvoted = new ArrayList<Player>();
 		priceitem = new ItemStack(Material.getMaterial(this.getConfig().getInt("price.item")), this.getConfig().getInt("price.ammount"));
 		tie_prize = new ItemStack(Material.getMaterial(this.getConfig().getInt("price.tie.item")), this.getConfig().getInt("price.tie.ammount"));
 		
@@ -71,7 +75,6 @@ public class ERB extends JavaPlugin{
 	
  	@Override
     public void onDisable() {
-		Bukkit.getScheduler().cancelTask(ERB.this.taskID);	 	
 		blacklist.clear();
 		hasvoted.clear();
 	}
@@ -109,9 +112,9 @@ public class ERB extends JavaPlugin{
  						Bukkit.broadcastMessage(ChatColor.DARK_RED+"[ERB]"+ ChatColor.BLUE+"The first rapper is: "+p.getDisplayName().toString());
  					}else if(max==1){
  						max++;
+ 						hasvoted.add(p);
  						if(!p.toString().equalsIgnoreCase(rapper_1.toString())){ //TODO: make a not
  							rapper_2 = p;
- 							hasvoted.add(p);
  							Bukkit.broadcastMessage(ChatColor.DARK_RED+"[ERB]"+ ChatColor.BLUE+"The second rapper is: "+p.getDisplayName().toString());
  							getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ ChatColor.RED + "Prepare for rapping!");
  						}else{
@@ -122,15 +125,25 @@ public class ERB extends JavaPlugin{
  						int countdown = 5;
  							
 	 						taskID = this.getServer().getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
-	 							int countdown = 35;
+	 							int countdown = 55;
 	 						    @Override 
 	 						    public void run() {
 	 						    	if(countdown != -1){ 						    		
-	 						    	if(countdown >= 30){
-		 						        getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ (countdown-30));
-	 						    	}else if(countdown == 29){
-	 						    		getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ ChatColor.BLUE + "Start rapping!");
+	 						    	if(countdown >= 50){
+		 						        getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ (countdown-50));
+	 						    	}else if(countdown == 49){
+	 						    		getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ ChatColor.BLUE + rapper_1.getDisplayName().toString() + " starts rapping!");
 	 						    		rap=true;	
+	 						    		session_1 = true;
+	 						    		session_2 = false;
+	 						    	}else if(countdown == 39){
+	 						    		getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ ChatColor.BLUE + rapper_2.getDisplayName().toString() + " can rap now!");
+	 						    		session_2 = true;
+	 						    		session_1 = false;
+	 						    	}else if(countdown == 19){
+	 						    		getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ ChatColor.BLUE + rapper_1.getDisplayName().toString() + " ends the battle with another rap!");
+	 						    		session_1 = true;
+	 						    		session_2 = false;
 	 						    	}else if(countdown == 9){
 	 						    		getServer().broadcastMessage(ChatColor.DARK_RED+"[ERB] "+ ChatColor.RED + "Rapping stopped!");
 	 						    		rap = false;
@@ -172,10 +185,10 @@ public class ERB extends JavaPlugin{
  							p.sendMessage(ChatColor.DARK_RED+"[ERB] "+ChatColor.RED+"You can't vote anymore!");
  							return true;
  						}
-		 					if(args[1].equalsIgnoreCase(rapper_1.getDisplayName().toString())){
+		 					if(matches(args[1], rapper_1)){//args[1].equalsIgnoreCase(rapper_1.getDisplayName().toString())
 		 						vote_1++;
 		 						p.sendMessage(ChatColor.DARK_RED+"[ERB] "+ChatColor.BLUE + "You voted for: " + rapper_1.getDisplayName().toString());
-		 					}else if(args[1].equalsIgnoreCase(rapper_2.getDisplayName().toString())){
+		 					}else if(matches(args[1], rapper_2)){
 		 						vote_2++;
 		 						p.sendMessage(ChatColor.DARK_RED+"[ERB] "+ChatColor.BLUE + "You voted for: " + rapper_2.getDisplayName().toString());
 		 					}else{
@@ -236,6 +249,16 @@ public class ERB extends JavaPlugin{
 		rap = false;
 		enabled = true;
 		hasvoted.clear();
+	}
+	
+	private boolean matches(String s, Player p){
+		List<Player>m=  Bukkit.matchPlayer(s);
+		if(m.size()==1){
+			if(m.contains(p)){
+				return true;
+			}
+		}
+		return false;
 	}
 	
 }
